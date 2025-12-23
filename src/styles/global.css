@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@import "@fontsource/outfit/300.css";
+@import "@fontsource/outfit/400.css";
+@import "@fontsource/outfit/600.css";
+@import "@fontsource/outfit/700.css";
+
+/* --- 1. RAW COLOR PALETTE DEFINITION --- */
+@theme {
+  /* Font */
+  --font-sans: 'Outfit', sans-serif;
+
+  /* Register Custom Colors to Tailwind Namespace */
+  --color-azure-50: var(--azure-blue-50);
+  --color-azure-500: var(--azure-blue-500);
+  --color-azure-600: var(--azure-blue-600);
+  
+  --color-mint-500: var(--mint-leaf-500);
+  --color-mint-400: var(--mint-leaf-400);
+
+  --color-prussian-900: var(--prussian-blue-900);
+  --color-prussian-950: var(--prussian-blue-950);
+  
+  --color-cool-800: var(--cool-steel-800);
+  --color-cool-900: var(--cool-steel-900);
+
+  /* Semantic / Functional Colors (Abstracted) */
+  --color-app-bg: var(--bg-app);
+  --color-app-surface: var(--bg-surface);
+  --color-app-border: var(--border-color);
+  --color-app-text-main: var(--text-main);
+  --color-app-text-muted: var(--text-muted);
+  --color-app-primary: var(--primary-color);
+}
+
+/* --- 2. CSS VARIABLES (DARK MODE DEFAULT) --- */
+:root {
+  /* Dark Mode Raw Palette (Azure Blue, Mint Leaf, Prussian Blue, etc.) */
+  --azure-blue-50: #e7f0fe;
+  --azure-blue-500: #0b64f4;
+  --azure-blue-600: #0950c3;
+
+  --mint-leaf-400: #43efb6;
+  --mint-leaf-500: #14eba3;
+
+  --prussian-blue-900: #0e1525;
+  --prussian-blue-950: #090e1a; /* Main Dark BG */
+
+  --cool-steel-700: #3d4a5c;
+  --cool-steel-800: #29313d;
+  --cool-steel-900: #14191f;
+
+  --bright-snow-50: #edf2f7;
+  --bright-snow-400: #7099c2;
+
+  /* Semantic Mapping (Dark Mode) */
+  --bg-app: var(--prussian-blue-950);
+  --bg-surface: var(--cool-steel-900);
+  --border-color: var(--cool-steel-800);
+  --text-main: var(--bright-snow-50);
+  --text-muted: var(--bright-snow-400);
+  --primary-color: var(--azure-blue-500);
+}
+
+/* --- 3. LIGHT MODE OVERRIDES --- */
+.light {
+  /* Light Mode Raw Palette */
+  --lm-bright-snow: #f8fafc;
+  --lm-prussian-blue: #0f172a;
+  --lm-shamrock: #059669;
+  --lm-white: #ffffff;
+  --lm-slate-grey: #64748b;
+  --lm-royal-blue: #2563eb;
+
+  /* Semantic Mapping (Light Mode Switch) */
+  --bg-app: var(--lm-bright-snow);
+  --bg-surface: var(--lm-white);
+  --border-color: #e2e8f0; /* Manual Slate-200 equivalent */
+  --text-main: var(--lm-prussian-blue);
+  --text-muted: var(--lm-slate-grey);
+  --primary-color: var(--lm-royal-blue);
+}
+
+/* Base Styles */
+body {
+  background-color: var(--color-app-bg);
+  color: var(--color-app-text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Mobile Scrollbar Hide */
+::-webkit-scrollbar {
+  display: none;
+}
