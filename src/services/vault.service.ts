@@ -8,6 +8,9 @@ export interface AcademicFile {
   semester: number;
   category: string;
   createdAt: string;
+  extractedText?: string;
+  citationText?: string;
+
 }
 
 class AcademicVaultDB extends Dexie {
@@ -41,5 +44,13 @@ export const vaultService = {
   },
   async updateFile(id: number, data: Partial<AcademicFile>) {
     return await vaultDb.files.update(id, data);
+  },
+
+  async saveExtractedText(id: number, text: string) {
+    return await vaultDb.files.update(id, { extractedText: text });
+  },
+
+  async updateCitation(id: number, citation: string) {
+    return await vaultDb.files.update(id, { citationText: citation });
   }
 };

@@ -2,12 +2,14 @@ import { useUserStore } from '@/lib/store';
 
 const GOOGLE_DISCOVERY_DOCS = [
   "https://www.googleapis.com/discovery/v1/apis/sheets/v4/rest",
-  "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
+  "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+  "https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest",
+  "https://www.googleapis.com/discovery/v1/apis/classroom/v1/rest"
 ];
-const GOOGLE_SCOPES = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events";
+
+const GOOGLE_SCOPES = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/drive.readonly";
 
 export const googleService = {
-  // 1. Inisialisasi Google API Client
   async initClient() {
     return new Promise((resolve, reject) => {
       window.gapi.load('client:auth2', async () => {
@@ -26,7 +28,38 @@ export const googleService = {
     });
   },
 
-  // 2. Sinkronisasi Transaksi ke Google Sheets
+  async listClassroomCourses() {
+    try {
+      const response = await window.gapi.client.classroom.courses.list({
+        courseStates: 'ACTIVE'
+      });
+      return response.result.courses || [];
+    } catch (error) {
+      console.error("Failed to fetch Classroom courses:", error);
+      throw error;
+    }
+  },
+
+  async syncClassroomMaterials(courseId: string) {
+    try {
+      const workResponse = await window.gapi.client.classroom.courses.courseWork.list({
+        courseId: courseId
+      });
+      
+      const announcementResponse = await window.gapi.client.classroom.courses.announcements.list({
+        courseId: courseId
+      });
+
+      return {
+        work: workResponse.result.courseWork || [],
+        announcements: announcementResponse.result.announcements || []
+      };
+    } catch (error) {
+      console.error("Classroom Materials Sync Error:", error);
+      throw error;
+    }
+  },
+
   async syncToSheets(transaction: any) {
     try {
       const spreadsheetId = import.meta.env.VITE_SPREADSHEET_ID;
@@ -41,21 +74,18 @@ export const googleService = {
         ]
       ];
 
-      const response = await window.gapi.client.sheets.spreadsheets.values.append({
+      return await window.gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: spreadsheetId,
         range: range,
         valueInputOption: "USER_ENTERED",
         resource: { values: values },
       });
-
-      return response;
     } catch (error) {
       console.error("GSheets Sync Error:", error);
       throw error;
     }
   },
 
-  // 3. Sinkronisasi Jadwal ke Google Calendar
   async syncToCalendar(course: any) {
     try {
       const event = {
@@ -73,19 +103,16 @@ export const googleService = {
         'recurrence': ['RRULE:FREQ=WEEKLY;COUNT=16'],
       };
 
-      const request = window.gapi.client.calendar.events.insert({
+      return await window.gapi.client.calendar.events.insert({
         'calendarId': 'primary',
         'resource': event,
       });
-
-      return await request;
     } catch (error) {
       console.error("GCalendar Sync Error:", error);
       throw error;
     }
   },
 
-  // Helper untuk menentukan ISO String waktu kuliah
   getDateTime(dayName: string, timeStr: string) {
     const days: any = { 'Senin': 1, 'Selasa': 2, 'Rabu': 3, 'Kamis': 4, 'Jumat': 5, 'Sabtu': 6, 'Minggu': 0 };
     const targetDay = days[dayName];
@@ -95,5 +122,49 @@ export const googleService = {
     const [hours, minutes] = timeStr.trim().split(':');
     resultDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     return resultDate.toISOString();
+  },
+
+  async createCourseTask(course: any) {
+    try {
+      const task = {
+        title: `Kuliah: ${course.name}`,
+        notes: `Ruang: ${course.room} | Dosen: ${course.lecturer || 'TBA'} | Waktu: ${course.day}, ${course.time}`,
+        status: 'needsAction'
+      };
+
+      return await window.gapi.client.tasks.tasks.insert({
+        tasklist: '@default',
+        resource: task
+      });
+    } catch (error) {
+      console.error("Google Tasks Sync Error:", error);
+      throw error;
+    }
+  },
+
+  async syncClassroomMaterials(courseId: string) {
+    try {
+      const response = await window.gapi.client.classroom.courses.courseWork.list({
+        courseId: courseId
+      });
+      return response.result.courseWork;
+    } catch (error) {
+      console.error("Classroom Sync Error:", error);
+      throw error;
+    }
+  },
+
+  async downloadDriveFile(fileId: string): Promise<Blob> {
+    try {
+      const response = await window.gapi.client.drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+      });
+      
+      return new Blob([response.body], { type: response.headers['Content-Type'] });
+    } catch (error) {
+      console.error("GDrive Download Error:", error);
+      throw error;
+    }
   }
 };

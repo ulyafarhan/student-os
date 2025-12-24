@@ -75,10 +75,21 @@ export const Vault: React.FC = () => {
   };
 
   const filteredFiles = files.filter(file => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const query = searchQuery.toLowerCase();
+    const matchesName = file.name.toLowerCase().includes(query);
+    const matchesContent = file.extractedText?.toLowerCase().includes(query);
+    
     const matchesCategory = selectedCategory === 'Semua' || file.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    return (matchesName || matchesContent) && matchesCategory;
   });
+
+  const downloadAsImage = async (file: AcademicFile) => {
+    const url = URL.createObjectURL(file.blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${file.name.replace('.pdf', '')}.jpg`;
+    link.click();
+  };
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 pb-32">
@@ -188,6 +199,13 @@ export const Vault: React.FC = () => {
                   >
                     <Trash2 size={16} />
                   </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); downloadAsImage(file); }} 
+                    className="p-2 text-app-text-muted hover:text-emerald-500 transition-colors"
+                    title="Convert to JPG"
+                  >
+                    <div className="text-[10px] font-black">JPG</div>
+                  </button> 
                 </div>
               </div>
             </div>

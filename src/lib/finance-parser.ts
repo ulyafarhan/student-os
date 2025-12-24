@@ -13,7 +13,7 @@ const CATEGORY_MAP: Record<string, string[]> = {
   'Lainnya': []
 };
 
-const INCOME_KEYWORDS = ['gaji', 'dikasih', 'transfer', 'masuk', 'bonus', 'untung', 'pemasukan'];
+const INCOME_KEYWORDS = ['gaji', 'dikasih', 'transfer', 'masuk', 'bonus', 'untung', 'pemasukan','kiriman'];
 
 export const parseFinanceInput = (input: string): ParsedTransaction => {
   const lowInput = input.toLowerCase();

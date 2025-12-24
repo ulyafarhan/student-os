@@ -2,8 +2,35 @@ import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import Dexie, { type Table } from 'dexie';
 import { type NewTransaction } from '@/db/schema';
+import { supabase } from '@/lib/supabase';
 
-// --- BROWSER DB (DEXIE) ---
+export const supabaseService = {
+  async signIn(email: string) {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+  async syncTransactionMeta(transaction: any) {
+    const { data, error } = await supabase
+      .from('transactions_meta')
+      .upsert({
+        id: transaction.id,
+        title: transaction.title,
+        amount: transaction.amount,
+        category: transaction.category,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
+    return data;
+  }
+};
+
 class StudentOSWebDB extends Dexie {
   transactions!: Table<any>;
   constructor() {
@@ -16,7 +43,6 @@ class StudentOSWebDB extends Dexie {
 
 const webDb = new StudentOSWebDB();
 
-// --- DB SERVICE MANAGER ---
 class DatabaseService {
   private static instance: DatabaseService;
   private sqlite: SQLiteConnection | null = null;
@@ -39,8 +65,7 @@ class DatabaseService {
 
   public async init() {
     if (!this.isNative) {
-      console.log(">>> [Web] Using IndexedDB (Dexie)");
-      return; // IndexedDB otomatis siap
+      return;
     }
 
     try {
@@ -67,18 +92,30 @@ class DatabaseService {
         );
       `;
       await this.dbNative.execute(query);
-      console.log(">>> [Native] SQLite Ready");
     } catch (e) {
-      console.error("Native DB Init Error", e);
+      console.error(e);
     }
   }
 
   public async addTransaction(tx: NewTransaction) {
+    let result;
     if (this.isNative) {
       const query = `INSERT INTO transactions (title, amount, type, category, date, synced) VALUES (?, ?, ?, ?, ?, ?)`;
-      await this.dbNative?.run(query, [tx.title, tx.amount, tx.type, tx.category, tx.date, 0]);
+      result = await this.dbNative?.run(query, [tx.title, tx.amount, tx.type, tx.category, tx.date, 0]);
     } else {
-      await webDb.transactions.add({ ...tx, synced: 0 });
+      const id = await webDb.transactions.add({ ...tx, synced: 0 });
+      result = { changes: { lastId: id } };
+    }
+
+    if (navigator.onLine) {
+      try {
+        await supabaseService.syncTransactionMeta({
+          ...tx,
+          id: result?.changes?.lastId
+        });
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -92,7 +129,7 @@ class DatabaseService {
   }
 
   public async getBalance() {
-    let txs = await this.getTransactions();
+    const txs = await this.getTransactions();
     let income = 0;
     let expense = 0;
 
@@ -109,7 +146,6 @@ class DatabaseService {
       const query = `UPDATE transactions SET synced = ? WHERE id = ?`;
       await this.dbNative?.run(query, [status ? 1 : 0, id]);
     } else {
-      // @ts-ignore - webDb didefinisikan di luar class
       await webDb.transactions.update(id, { synced: status ? 1 : 0 });
     }
   }

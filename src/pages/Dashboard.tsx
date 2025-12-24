@@ -27,36 +27,34 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
-  try {
-    setLoading(true);
-    await dbService.init();
-    
-    const currentSemester = Number(semester) || 1;
-    const bal = await dbService.getBalance();
-    const allCourses = await academicService.getSchedule(currentSemester);
-    const exams = await academicService.getUpcomingExams();
-    
-    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const today = dayNames[new Date().getDay()];
-    const filtered = allCourses.filter(c => c.day === today);
-    
-    setBalance(bal || { income: 0, expense: 0, total: 0 });
-    setTodayCourses(filtered || []);
-    setUpcomingExams(exams || []);
+    try {
+      setLoading(true);
+      await dbService.init();
+      
+      const currentSemester = Number(semester) || 1;
+      const bal = await dbService.getBalance();
+      const allCourses = await academicService.getSchedule(currentSemester);
+      const exams = await academicService.getUpcomingExams();
+      
+      const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const today = dayNames[new Date().getDay()];
+      const filtered = allCourses.filter(c => c.day === today);
+      
+      setBalance(bal || { income: 0, expense: 0, total: 0 });
+      setTodayCourses(filtered || []);
+      setUpcomingExams(exams || []);
 
-    syncEngine.performSync();
-    
-  } catch (e) {
-    console.error("Dashboard Load Error:", e);
-  } finally {
-    setLoading(false);
-  }
-};
+      syncEngine.performSync();
+      
+    } catch (e) {
+      console.error("Dashboard Load Error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    loadData().then(() => {
-      syncEngine.performSync();
-    });
+    loadData();
   }, [semester]);
 
   useEffect(() => {
@@ -98,6 +96,21 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const startVoiceInput = () => {
+    const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!Recognition) return alert("Browser tidak mendukung Speech Recognition");
+
+    const recognition = new Recognition();
+    recognition.lang = 'id-ID';
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+    };
+    
+    recognition.start();
+  };
+
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat('id-ID', { 
       style: 'currency', 
@@ -122,8 +135,6 @@ export const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <ExamCountdown />
-
           <div 
             onClick={() => navigate('/finance')}
             className="rounded-xl p-8 bg-gradient-to-br from-blue-600 to-blue-500 shadow-xl text-white cursor-pointer hover:scale-[1.01] transition-transform relative overflow-hidden"
@@ -152,7 +163,7 @@ export const Dashboard: React.FC = () => {
           <div className="grid grid-cols-3 gap-4">
             <ShortcutBtn icon={<Scan className="text-purple-500" />} label="Scanner" onClick={() => navigate('/scanner')} />
             <ShortcutBtn icon={<BookOpen className="text-pink-500" />} label="Vault" onClick={() => navigate('/vault')} />
-            <ShortcutBtn icon={<Mic className="text-blue-500" />} label="Catat" onClick={() => inputRef.current?.focus()} />
+            <ShortcutBtn icon={<Mic className="text-blue-500" />} label="Catat" onClick={startVoiceInput} />
           </div>
 
           <section className="bg-app-surface border border-app-border rounded-xl p-6 shadow-sm">

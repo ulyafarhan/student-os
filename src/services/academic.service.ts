@@ -8,6 +8,8 @@ export interface Course {
   room: string;
   lecturer: string;
   semester: number;
+  gradeWeight?: string; 
+  contactInfo?: string; 
 }
 
 export interface Exam {
@@ -73,5 +75,8 @@ export const academicService = {
   },
   async deleteCourse(id: number) {
     return await db.courses.delete(id);
+  },
+  async updateCourseDetails(id: number, data: Partial<Course>) {
+    return await db.courses.update(id, data);
   }
 };

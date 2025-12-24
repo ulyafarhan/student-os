@@ -1,51 +1,95 @@
 import React, { useEffect, useState } from 'react';
-import { academicService, type Exam } from '@/services/academic.service';
-import { Timer, AlertCircle } from 'lucide-react';
-import dayjs from 'dayjs';
+import { Clock, AlertTriangle, BookOpen, Bell } from 'lucide-react';
+import { clsx } from 'clsx';
 
-export const ExamCountdown: React.FC = () => {
-  const [nextExam, setNextExam] = useState<Exam | null>(null);
+interface Exam {
+  id?: number;
+  courseName: string;
+  date: string;
+  type: 'UTS' | 'UAS' | 'Kuis';
+}
+
+export const ExamCountdown: React.FC<Exam> = ({ courseName, date, type }) => {
+  const [timeLeft, setTimeLeft] = useState<{ days: number; priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' }>({
+    days: 0,
+    priority: 'LOW'
+  });
 
   useEffect(() => {
-    academicService.getUpcomingExams()
-      .then(exams => {
-        if (exams && exams.length > 0) {
-          setNextExam(exams[0]);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    const calculatePriority = () => {
+      const diff = new Date(date).getTime() - new Date().getTime();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      
+      let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
+      if (days <= 2) priority = 'CRITICAL';
+      else if (days <= 7) priority = 'HIGH';
+      else if (days <= 14) priority = 'MEDIUM';
 
-  if (!nextExam) return null;
+      setTimeLeft({ days, priority });
 
-  const calculateDaysLeft = () => {
-    const diff = new Date(nextExam.date).getTime() - new Date().getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+      if (priority === 'CRITICAL' || priority === 'HIGH') {
+        sendPriorityNotification(courseName, days, priority);
+      }
+    };
+
+    calculatePriority();
+  }, [date, courseName]);
+
+  const sendPriorityNotification = (name: string, days: number, level: string) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(`PRIORITAS BELAJAR: ${level}`, {
+        body: `${name} tinggal ${days} hari lagi. Fokus pada materi ini sekarang!`,
+        icon: '/vite.svg'
+      });
+    }
   };
 
-  const daysLeft = calculateDaysLeft();
-  const isUrgent = daysLeft <= 3;
+  const getPriorityStyles = () => {
+    switch (timeLeft.priority) {
+      case 'CRITICAL': return "bg-red-500/10 border-red-500 text-red-600";
+      case 'HIGH': return "bg-orange-500/10 border-orange-500 text-orange-600";
+      case 'MEDIUM': return "bg-blue-500/10 border-blue-500 text-blue-600";
+      default: return "bg-app-surface border-app-border text-app-text-muted";
+    }
+  };
 
   return (
-    <div className={`p-4 rounded-xl border ${isUrgent ? 'bg-red-500/10 border-red-500/30' : 'bg-slate-900 border-white/5'} flex items-center gap-4 mb-6`}>
-      <div className={`p-3 rounded-xl ${isUrgent ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-500 text-white'}`}>
-        {isUrgent ? <AlertCircle size={24} /> : <Timer size={24} />}
-      </div>
-      
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-start">
-          <h4 className="font-bold text-sm truncate pr-2 uppercase text-app-text-main">{nextExam.courseName}</h4>
-          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/10 text-app-text-main shrink-0">{nextExam.type}</span>
+    <div className={clsx(
+      "p-4 rounded-xl border transition-all animate-in fade-in slide-in-from-right-4",
+      getPriorityStyles()
+    )}>
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-2">
+          {timeLeft.priority === 'CRITICAL' ? <AlertTriangle size={16} /> : <Clock size={16} />}
+          <span className="text-[10px] font-black uppercase tracking-widest">{type} Radar</span>
         </div>
-        <p className="text-xs text-app-text-muted mt-1 uppercase tracking-widest font-bold">Ujian Terdekat</p>
+        <div className={clsx(
+          "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter",
+          timeLeft.priority === 'CRITICAL' ? "bg-red-500 text-white" : "bg-app-primary/10 text-app-primary"
+        )}>
+          {timeLeft.priority} Priority
+        </div>
       </div>
 
-      <div className="text-right">
-        <p className={`text-2xl font-black ${isUrgent ? 'text-red-500' : 'text-blue-500'}`}>
-          {daysLeft < 0 ? 0 : daysLeft}
-        </p>
-        <p className="text-[10px] text-app-text-muted uppercase font-bold">Hari Lagi</p>
+      <div className="space-y-1">
+        <h4 className="text-sm font-bold truncate text-app-text-main">{courseName}</h4>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-medium opacity-70">
+            Target: {new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+          </p>
+          <div className="flex items-center gap-1">
+            <span className="text-xl font-black tracking-tighter">{timeLeft.days}</span>
+            <span className="text-[10px] font-bold uppercase">Hari Lagi</span>
+          </div>
+        </div>
       </div>
+
+      {timeLeft.priority === 'CRITICAL' && (
+        <div className="mt-3 pt-3 border-t border-red-500/20 flex items-center gap-2 text-[9px] font-bold uppercase animate-pulse">
+          <Bell size={12} />
+          Waktunya Review Intensif Materi!
+        </div>
+      )}
     </div>
   );
 };

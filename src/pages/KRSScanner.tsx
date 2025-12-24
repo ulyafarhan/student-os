@@ -33,6 +33,19 @@ export const KRSScanner: React.FC = () => {
     try {
       await academicService.clearSchedule(semester);
       await academicService.saveCourses(preview);
+      
+      const isSignedIn = window.gapi?.auth2?.getAuthInstance()?.isSignedIn?.get();
+      
+      if (isSignedIn) {
+        for (const course of preview) {
+          try {
+            await googleService.createCourseTask(course);
+          } catch (err) {
+            console.error("GTasks fail for:", course.name);
+          }
+        }
+      }
+      
       navigate('/schedule');
     } catch (e) {
       console.error(e);

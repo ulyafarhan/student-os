@@ -30,10 +30,20 @@ export const Schedule: React.FC = () => {
 
   const saveManualCourse = async () => {
     if (!newCourse.name || !newCourse.time) return alert("Isi nama matkul dan jam.");
-    await academicService.addSingleCourse({ 
-      ...newCourse, 
-      semester: Number(semester) 
-    });
+    
+    const courseData = { ...newCourse, semester: Number(semester) };
+    await academicService.addSingleCourse(courseData);
+    
+    const isSignedIn = window.gapi?.auth2?.getAuthInstance()?.isSignedIn?.get();
+    
+    if (isSignedIn) {
+      try {
+        await googleService.createCourseTask(courseData);
+      } catch (err) {
+        console.warn("GTasks sync failed");
+      }
+    }
+
     setShowAddManual(false);
     setNewCourse({ name: '', day: 'Senin', time: '', room: '', lecturer: '' });
     loadSchedule();
